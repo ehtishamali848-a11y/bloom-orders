@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bloom Orders — Flower Shop</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --rose: #c8445a; --rose-light: #fdf0f2; --rose-mid: #f5c5cd;
+    --green: #3a6b4a; --green-light: #eef5f0;
+    --ink: #1a1a1a; --muted: #6b7280; --border: #e5e7eb;
+    --card: #ffffff; --surface: #f9fafb; --page: #f4f1ec;
+  }
+  body { font-family: 'DM Sans', sans-serif; background: var(--page); color: var(--ink); min-height: 100vh; padding: 2rem 1rem; }
+  .wrap { max-width: 560px; margin: 0 auto; }
+  .header { text-align: center; margin-bottom: 2rem; }
+  .header h1 { font-family: 'Playfair Display', serif; font-size: 32px; font-weight: 400; color: var(--rose); letter-spacing: -0.5px; }
+  .header p { font-size: 14px; color: var(--muted); margin-top: 6px; }
+  .card { background: var(--card); border-radius: 16px; border: 1px solid var(--border); padding: 1.5rem; margin-bottom: 1rem; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+  .card-title { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 12px; }
+  input[type=text], input[type=password], textarea, select {
+    width: 100%; border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 12px; font-family: 'DM Sans', sans-serif; font-size: 14px;
+    background: var(--surface); color: var(--ink); transition: border-color 0.15s;
+  }
+  input[type=text]:focus, input[type=password]:focus, textarea:focus, select:focus { outline: none; border-color: var(--rose); background: #fff; }
+  textarea { resize: none; line-height: 1.6; }
+  .row { display: flex; gap: 10px; }
+  .row input, .row select { flex: 1; }
+  .btn { padding: 10px 20px; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.15s; border: 1px solid var(--border); background: var(--card); color: var(--ink); }
+  .btn:hover { background: var(--surface); }
+  .btn-rose { background: var(--rose); color: #fff; border-color: var(--rose); }
+  .btn-rose:hover { background: #b33a4f; border-color: #b33a4f; }
+  .btn-rose:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-green { background: var(--green); color: #fff; border-color: var(--green); }
+  .btn-green:hover { background: #2f5a3d; }
+  .btn-green:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field.full { grid-column: 1 / -1; }
+  .field label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); }
+  .items-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 6px; }
+  .item-row { display: flex; gap: 6px; align-items: center; }
+  .item-row input.desc { flex: 1; }
+  .item-row input.qty { width: 64px; }
+  .remove-btn { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--border); background: transparent; cursor: pointer; color: var(--muted); font-size: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; }
+  .remove-btn:hover { background: var(--rose-light); color: var(--rose); border-color: var(--rose-mid); }
+  .add-item-btn { font-size: 12px; color: var(--rose); background: none; border: none; cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 500; padding: 2px 0; }
+  .toast { padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-top: 10px; line-height: 1.5; display: none; }
+  .toast.show { display: block; }
+  .toast.info { background: var(--green-light); color: var(--green); border: 1px solid #b5d9be; }
+  .toast.error { background: var(--rose-light); color: var(--rose); border: 1px solid var(--rose-mid); }
+  .toast.loading { background: var(--surface); color: var(--muted); border: 1px solid var(--border); }
+  .spinner { display: inline-block; width: 12px; height: 12px; border: 1.5px solid var(--border); border-top-color: var(--rose); border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 6px; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .step-bar { display: flex; align-items: center; margin-bottom: 1.5rem; }
+  .step { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .step.active { color: var(--rose); font-weight: 500; }
+  .step.done { color: var(--green); }
+  .step-dot { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid currentColor; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; flex-shrink: 0; }
+  .step-line { flex: 1; height: 1px; background: var(--border); margin: 0 8px; }
+  .success-box { text-align: center; padding: 2rem 1rem; }
+  .success-icon { width: 60px; height: 60px; border-radius: 50%; background: var(--green-light); border: 1px solid #b5d9be; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 26px; }
+  .success-box h2 { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 400; margin-bottom: 8px; }
+  .success-box p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .api-key-note { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+  a { color: var(--rose); }
+  .hidden { display: none !important; }
+  .pill { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+  .pill-green { background: var(--green-light); color: var(--green); }
+  .pill-rose { background: var(--rose-light); color: var(--rose); }
+  select { appearance: none; cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <h1>🌸 Bloom Orders</h1>
+    <p>Paste a WhatsApp message — AI extracts the details &amp; logs to your Google Sheet</p>
+  </div>
+
+  <!-- Config Card -->
+  <div class="card">
+    <div class="card-title">Setup (fill once)</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="field">
+        <label>Anthropic API Key</label>
+        <input type="password" id="api-key" placeholder="sk-ant-..." />
+        <div class="api-key-note">Get yours at <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a>. Stored only in your browser.</div>
+      </div>
+      <div class="field">
+        <label>Google Sheet ID</label>
+        <input type="text" id="sheet-id" placeholder="Paste the long ID from your sheet URL" />
+      </div>
+      <div class="field">
+        <label>Google OAuth Client ID</label>
+        <input type="text" id="oauth-client-id" placeholder="xxxx.apps.googleusercontent.com" />
+      </div>
+      <button class="btn btn-rose" onclick="saveConfig()" style="width:fit-content">Save settings</button>
+      <div id="config-toast" class="toast"></div>
+    </div>
+  </div>
+
+  <!-- Step bar -->
+  <div class="step-bar">
+    <div class="step active" id="dot1"><div class="step-dot">1</div> Paste message</div>
+    <div class="step-line"></div>
+    <div class="step" id="dot2"><div class="step-dot">2</div> Review order</div>
+    <div class="step-line"></div>
+    <div class="step" id="dot3"><div class="step-dot">3</div> Done</div>
+  </div>
+
+  <!-- Step 1 -->
+  <div id="step1" class="card">
+    <div class="card-title">WhatsApp message</div>
+    <textarea id="wa-input" rows="7" placeholder="Hi, I'd like to order 2 red rose bouquets for delivery on Friday 9th May to 42 Al Salam St, Salmiya. My name is Fatima, phone 96512345678. Card: Happy Birthday! Total KD 18, paid cash."></textarea>
+    <div id="parse-toast" class="toast"></div>
+    <div class="btn-row">
+      <button class="btn btn-rose" id="parse-btn" onclick="parseMessage()">Extract order details</button>
+      <button class="btn" onclick="document.getElementById('wa-input').value=''">Clear</button>
+    </div>
+  </div>
+
+  <!-- Step 2 -->
+  <div id="step2" class="card hidden">
+    <div class="card-title">Review &amp; edit order</div>
+    <div class="fields-grid">
+      <div class="field">
+        <label>Customer name</label>
+        <input type="text" id="f-name" />
+      </div>
+      <div class="field">
+        <label>Phone number</label>
+        <input type="text" id="f-phone" />
+      </div>
+      <div class="field full">
+        <label>Delivery address</label>
+        <input type="text" id="f-address" />
+      </div>
+      <div class="field">
+        <label>Delivery date</label>
+        <input type="text" id="f-date" />
+      </div>
+      <div class="field">
+        <label>Total price</label>
+        <input type="text" id="f-price" />
+      </div>
+      <div class="field">
+        <label>Payment status</label>
+        <select id="f-payment">
+          <option>Paid - cash</option>
+          <option>Paid - card</option>
+          <option>Paid - transfer</option>
+          <option>Pending</option>
+          <option>COD</option>
+        </select>
+      </div>
+      <div class="field full">
+        <label>Card message</label>
+        <input type="text" id="f-cardmsg" />
+      </div>
+      <div class="field full">
+        <label>Items ordered</label>
+        <div class="items-list" id="items-list"></div>
+        <button class="add-item-btn" onclick="addItemRow()">+ add item</button>
+      </div>
+      <div class="field full">
+        <label>Notes</label>
+        <input type="text" id="f-notes" placeholder="Any special instructions…" />
+      </div>
+    </div>
+    <div id="log-toast" class="toast"></div>
+    <div class="btn-row">
+      <button class="btn btn-green" id="log-btn" onclick="logToSheet()">Log to Google Sheets</button>
+      <button class="btn" onclick="goBack()">← Back</button>
+    </div>
+  </div>
+
+  <!-- Step 3 -->
+  <div id="step3" class="card hidden">
+    <div class="success-box">
+      <div class="success-icon">✓</div>
+      <h2>Order logged!</h2>
+      <p id="success-msg">The order has been added to your Google Sheet.</p>
+      <div class="btn-row" style="justify-content:center;margin-top:1.5rem">
+        <button class="btn btn-rose" onclick="reset()">New order</button>
+        <a id="sheet-link" href="#" target="_blank" class="btn">Open sheet ↗</a>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let oauthToken = null;
+
+  // Load saved config
+  window.onload = () => {
+    const ak = localStorage.getItem('bloom_api_key');
+    const sid = localStorage.getItem('bloom_sheet_id');
+    const oid = localStorage.getItem('bloom_oauth_id');
+    if (ak) document.getElementById('api-key').value = ak;
+    if (sid) document.getElementById('sheet-id').value = sid;
+    if (oid) document.getElementById('oauth-client-id').value = oid;
+    if (sid) document.getElementById('sheet-link').href = 'https://docs.google.com/spreadsheets/d/' + sid;
+  };
+
+  function saveConfig() {
+    const ak = document.getElementById('api-key').value.trim();
+    const sid = document.getElementById('sheet-id').value.trim();
+    const oid = document.getElementById('oauth-client-id').value.trim();
+    if (!ak || !sid || !oid) { showToast('config-toast', 'Please fill in all three fields.', 'error'); return; }
+    localStorage.setItem('bloom_api_key', ak);
+    localStorage.setItem('bloom_sheet_id', sid);
+    localStorage.setItem('bloom_oauth_id', oid);
+    document.getElementById('sheet-link').href = 'https://docs.google.com/spreadsheets/d/' + sid;
+    showToast('config-toast', '✓ Settings saved! You\'re ready to log orders.', 'info');
+  }
+
+  function showToast(id, msg, type) {
+    const el = document.getElementById(id);
+    el.className = 'toast show ' + type;
+    el.innerHTML = msg;
+  }
+
+  function hideToast(id) {
+    document.getElementById(id).className = 'toast';
+    document.getElementById(id).innerHTML = '';
+  }
+
+  function setStep(n) {
+    ['dot1','dot2','dot3'].forEach((id, i) => {
+      const el = document.getElementById(id);
+      el.className = 'step' + (i+1===n ? ' active' : i+1<n ? ' done' : '');
+    });
+    document.getElementById('step1').classList.toggle('hidden', n !== 1);
+    document.getElementById('step2').classList.toggle('hidden', n !== 2);
+    document.getElementById('step3').classList.toggle('hidden', n !== 3);
+  }
+
+  async function parseMessage() {
+    const apiKey = localStorage.getItem('bloom_api_key');
+    const msg = document.getElementById('wa-input').value.trim();
+    if (!apiKey) { showToast('parse-toast', 'Please save your Anthropic API key in the Setup section first.', 'error'); return; }
+    if (!msg) { showToast('parse-toast', 'Please paste a WhatsApp message first.', 'error'); return; }
+
+    const btn = document.getElementById('parse-btn');
+    btn.disabled = true;
+    showToast('parse-toast', '<span class="spinner"></span>Reading your message…', 'loading');
+
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-5',
+          max_tokens: 1000,
+          system: `You are an order parser for a flower shop in Kuwait. Extract order details from WhatsApp messages.
+Return ONLY valid JSON with these exact keys:
+{
+  "customer_name": "",
+  "phone": "",
+  "delivery_address": "",
+  "delivery_date": "",
+  "items": [{"item":"","qty":""}],
+  "card_message": "",
+  "total_price": "",
+  "payment_status": "",
+  "notes": ""
+}
+If a field is not mentioned, use empty string. Payment status options: Paid - cash, Paid - card, Paid - transfer, Pending, COD. Return only the JSON object, no markdown, no explanation.`,
+          messages: [{ role: 'user', content: msg }]
+        })
+      });
+
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message);
+      let text = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
+      text = text.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(text);
+      populateFields(parsed);
+      hideToast('parse-toast');
+      setStep(2);
+    } catch (e) {
+      showToast('parse-toast', 'Error: ' + e.message + '. Check your API key and try again.', 'error');
+      btn.disabled = false;
+    }
+  }
+
+  function populateFields(o) {
+    document.getElementById('f-name').value = o.customer_name || '';
+    document.getElementById('f-phone').value = o.phone || '';
+    document.getElementById('f-address').value = o.delivery_address || '';
+    document.getElementById('f-date').value = o.delivery_date || '';
+    document.getElementById('f-price').value = o.total_price || '';
+    document.getElementById('f-cardmsg').value = o.card_message || '';
+    document.getElementById('f-notes').value = o.notes || '';
+    const pay = document.getElementById('f-payment');
+    const status = (o.payment_status || 'Pending').toLowerCase();
+    for (let i = 0; i < pay.options.length; i++) {
+      if (pay.options[i].text.toLowerCase().includes(status)) { pay.selectedIndex = i; break; }
+    }
+    const list = document.getElementById('items-list');
+    list.innerHTML = '';
+    const items = o.items && o.items.length ? o.items : [{ item: '', qty: '1' }];
+    items.forEach(it => addItemRow(it.item, it.qty));
+  }
+
+  function addItemRow(item = '', qty = '1') {
+    const list = document.getElementById('items-list');
+    const row = document.createElement('div');
+    row.className = 'item-row';
+    row.innerHTML = `<input type="text" class="desc" placeholder="Item description" value="${String(item).replace(/"/g, '&quot;')}" />
+      <input type="text" class="qty" placeholder="Qty" value="${qty}" />
+      <button class="remove-btn" onclick="this.parentElement.remove()">✕</button>`;
+    list.appendChild(row);
+  }
+
+  function getItems() {
+    const rows = document.querySelectorAll('#items-list .item-row');
+    return Array.from(rows).map(r => {
+      const inputs = r.querySelectorAll('input');
+      return inputs[0].value + (inputs[1].value ? ' x' + inputs[1].value : '');
+    }).filter(s => s.trim()).join(', ');
+  }
+
+  async function logToSheet() {
+    const sheetId = localStorage.getItem('bloom_sheet_id');
+    const clientId = localStorage.getItem('bloom_oauth_id');
+    if (!sheetId || !clientId) { showToast('log-toast', 'Please save your Sheet ID and OAuth Client ID in the Setup section first.', 'error'); return; }
+
+    const btn = document.getElementById('log-btn');
+    btn.disabled = true;
+
+    oauthToken = null;
+    showToast('log-toast', '<span class="spinner"></span>Opening Google sign-in…', 'loading');
+    try { await signInGoogle(clientId); }
+    catch (e) { showToast('log-toast', 'Google sign-in failed or was cancelled. Please try again.', 'error'); btn.disabled = false; return; }
+
+    showToast('log-toast', '<span class="spinner"></span>Saving to Google Sheets…', 'loading');
+
+    const row = [
+      new Date().toLocaleString('en-GB'),
+      document.getElementById('f-name').value,
+      document.getElementById('f-phone').value,
+      getItems(),
+      document.getElementById('f-date').value,
+      document.getElementById('f-address').value,
+      document.getElementById('f-cardmsg').value,
+      document.getElementById('f-price').value,
+      document.getElementById('f-payment').value,
+      document.getElementById('f-notes').value,
+    ];
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+
+    try {
+      const res = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/Orders!A:J:append?valueInputOption=USER_ENTERED`,
+        {
+          method: 'POST',
+          signal: controller.signal,
+          headers: { 'Authorization': 'Bearer ' + oauthToken, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ values: [row] })
+        }
+      );
+      clearTimeout(timeout);
+      if (!res.ok) {
+        const e = await res.json();
+        throw new Error(e.error?.message || 'Sheets API error');
+      }
+      document.getElementById('success-msg').textContent = `Order for ${row[1] || 'customer'} has been saved to your sheet.`;
+      setStep(3);
+    } catch (e) {
+      clearTimeout(timeout);
+      const msg = e.name === 'AbortError' ? 'Request timed out. Please check your internet and try again.' : 'Error: ' + e.message;
+      showToast('log-toast', msg, 'error');
+      btn.disabled = false;
+    }
+  }
+
+  function signInGoogle(clientId) {
+    return new Promise((resolve, reject) => {
+      const redirect = window.location.href.split('?')[0].split('#')[0];
+      const scope = encodeURIComponent('https://www.googleapis.com/auth/spreadsheets');
+      const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirect)}&response_type=token&scope=${scope}&prompt=consent`;
+      const popup = window.open(url, 'google-auth', 'width=500,height=620,left=200,top=100');
+      const timer = setInterval(() => {
+        try {
+          if (popup.location.href.includes('access_token')) {
+            clearInterval(timer);
+            const params = new URLSearchParams(popup.location.hash.slice(1));
+            oauthToken = params.get('access_token');
+            popup.close();
+            resolve(oauthToken);
+          }
+        } catch (e) {}
+        if (popup.closed) { clearInterval(timer); if (!oauthToken) reject(new Error('Popup closed')); }
+      }, 400);
+    });
+  }
+
+  function goBack() { setStep(1); document.getElementById('parse-btn').disabled = false; }
+
+  function reset() {
+    document.getElementById('wa-input').value = '';
+    hideToast('parse-toast');
+    document.getElementById('parse-btn').disabled = false;
+    oauthToken = null;
+    setStep(1);
+  }
+</script>
+</body>
+</html>
